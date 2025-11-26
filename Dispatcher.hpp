@@ -21,6 +21,7 @@
 
 #define PROFANITY_SPEEDSAMPLES 20
 #define PROFANITY_MAX_SCORE 40
+#define PROFANITY_RESULT_AMOUNT 1000
 
 class Dispatcher
 {
@@ -62,7 +63,11 @@ private:
 		CLMemory<mp_number> m_memPointsDeltaX;
 		CLMemory<mp_number> m_memInversedNegativeDoubleGy;
 		CLMemory<mp_number> m_memPrevLambda;
-		CLMemory<result> m_memResult;
+		CLMemory<kernel_result> m_memResult;
+		CLMemory<cl_uint> m_memResultCounter;
+
+		cl_uint m_lastCounter;
+
 
 		// Data parameters used in some modes
 		CLMemory<cl_uchar> m_memData1;
@@ -136,6 +141,8 @@ private: /* Instance variables */
 	cl_ulong4 m_publicKeyY;
 
 	std::string m_outputPath;
+
+	std::vector<result> m_results;
 };
 
 #endif /* HPP_DISPATCHER */

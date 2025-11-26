@@ -23,10 +23,21 @@ typedef struct {
     mp_number y;
 } point;
 
-typedef struct {
-	cl_uint found;
+typedef struct
+{
 	cl_uint foundId;
+	cl_uint score;
 	cl_uchar foundHash[20];
+} kernel_result;
+
+typedef struct
+{
+	cl_ulong4 seed;
+	cl_ulong round;
+	cl_uint foundId;
+	cl_uchar score;
+	cl_uchar foundHash[20];
+	long long seconds;
 } result;
 
 #endif /* HPP_TYPES */

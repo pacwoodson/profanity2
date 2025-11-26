@@ -73,18 +73,19 @@ static std::string toHex(const uint8_t * const s, const size_t len) {
 	return r;
 }
 
-static std::string getResultLine(cl_ulong4 seed, cl_ulong round, result r, cl_uchar score, const std::chrono::time_point<std::chrono::steady_clock> & timeStart, const Mode & mode) {
-	// Time delta
-	const auto seconds = std::chrono::duration_cast<std::chrono::seconds>(std::chrono::steady_clock::now() - timeStart).count();
-
+static std::string getResultLine(const result &r, const Mode &mode)
+{
 	// Format private key
 	cl_ulong carry = 0;
 	cl_ulong4 seedRes;
 
-	seedRes.s[0] = seed.s[0] + round; carry = seedRes.s[0] < round;
-	seedRes.s[1] = seed.s[1] + carry; carry = !seedRes.s[1];
-	seedRes.s[2] = seed.s[2] + carry; carry = !seedRes.s[2];
-	seedRes.s[3] = seed.s[3] + carry + r.foundId;
+	seedRes.s[0] = r.seed.s[0] + r.round;
+	carry = seedRes.s[0] < r.round;
+	seedRes.s[1] = r.seed.s[1] + carry;
+	carry = !seedRes.s[1];
+	seedRes.s[2] = r.seed.s[2] + carry;
+	carry = !seedRes.s[2];
+	seedRes.s[3] = r.seed.s[3] + carry + r.foundId;
 
 	std::ostringstream ss;
 	std::ostringstream allLineSS;
@@ -97,8 +98,8 @@ static std::string getResultLine(cl_ulong4 seed, cl_ulong round, result r, cl_uc
 	const std::string strPublic = toHex(r.foundHash, 20);
 
 	// Print
-	allLineSS << "  Time: " << std::setw(5) << seconds;
-	allLineSS << "s Score: " << std::setw(2) << (int)score;
+	allLineSS << "  Time: " << std::setw(5) << r.seconds;
+	allLineSS << "s Score: " << std::setw(2) << (int)r.score;
 	allLineSS << " Private: 0x" << strPrivate << ' ';
 	allLineSS << mode.transformName() << ": 0x" << strPublic;
 
@@ -202,6 +203,8 @@ Dispatcher::Device::Device(Dispatcher & parent, cl_context & clContext, cl_progr
 	m_memInversedNegativeDoubleGy(clContext, m_clQueue, CL_MEM_READ_WRITE | CL_MEM_HOST_NO_ACCESS, size, true),
 	m_memPrevLambda(clContext, m_clQueue, CL_MEM_READ_WRITE | CL_MEM_HOST_NO_ACCESS, size, true),
 	m_memResult(clContext, m_clQueue, CL_MEM_READ_WRITE | CL_MEM_HOST_READ_ONLY, PROFANITY_MAX_SCORE + 1),
+	m_memResultCounter(clContext, m_clQueue, CL_MEM_READ_WRITE | CL_MEM_HOST_READ_ONLY, 1),
+	m_lastCounter(0),
 	m_memData1(clContext, m_clQueue, CL_MEM_READ_ONLY | CL_MEM_HOST_WRITE_ONLY, 20),
 	m_memData2(clContext, m_clQueue, CL_MEM_READ_ONLY | CL_MEM_HOST_WRITE_ONLY, 20),
 	m_clSeed(createSeed()),
@@ -248,6 +251,12 @@ void Dispatcher::addDevice(cl_device_id clDeviceId, const size_t worksizeLocal, 
 void Dispatcher::run() {
 	m_eventFinished = clCreateUserEvent(m_clContext, NULL);
 	timeStart = std::chrono::steady_clock::now();
+
+	if (!m_outputPath.empty())
+	{
+		std::ofstream outputFile(m_outputPath, std::ios::app);
+		outputFile << "Started at " << timeStart.time_since_epoch().count() << std::endl;
+	}
 
 	init();
 
@@ -347,6 +356,7 @@ void Dispatcher::initBegin(Device & d) {
 	d.m_memData2.setKernelArg(d.m_kernelScore, 3);
 
 	CLMemory<cl_uchar>::setKernelArg(d.m_kernelScore, 4, d.m_clScoreMax); // Updated in handleResult()
+	d.m_memResultCounter.setKernelArg(d.m_kernelScore, 5);
 
 	// Seed device
 	initContinue(d);
@@ -453,6 +463,7 @@ void Dispatcher::dispatch(Device & d) {
 }
 
 void Dispatcher::handleResult(Device & d) {
+	/*
 	for (auto i = PROFANITY_MAX_SCORE; i > m_clScoreMax; --i) {
 		result & r = d.m_memResult[i];
 
@@ -474,6 +485,45 @@ void Dispatcher::handleResult(Device & d) {
 
 			break;
 		}
+	}
+		*/
+	// Read back the kernel_result counter to see how many results were found
+	d.m_memResultCounter.read(true);
+	cl_uint numResults = d.m_memResultCounter[0];
+
+	if (numResults >= PROFANITY_RESULT_AMOUNT)
+	{
+		m_quit = true;
+		return;
+	}
+
+	if (numResults > d.m_lastCounter)
+	{
+		d.m_memResult.read(true);
+		const auto seconds = std::chrono::duration_cast<std::chrono::seconds>(std::chrono::steady_clock::now() - timeStart).count();
+
+		for (cl_uint i = d.m_lastCounter; i < numResults; ++i)
+		{
+			kernel_result const &k_r = d.m_memResult[i];
+			result r;
+			r.seed = d.m_clSeed;
+			r.round = d.m_round;
+			r.foundId = k_r.foundId;
+			r.score = k_r.score;
+			r.seconds = seconds;
+
+			std::memcpy(r.foundHash, k_r.foundHash, 20 * sizeof(cl_uchar));
+			m_results.push_back(r);
+
+			const std::string resultLine = getResultLine(r, m_mode);
+			printResult(resultLine, m_outputPath);
+
+			if (m_clScoreQuit && r.score >= m_clScoreQuit)
+			{
+				m_quit = true;
+			}
+		}
+		d.m_lastCounter = numResults;
 	}
 }
 
@@ -522,7 +572,9 @@ void Dispatcher::printSpeed() {
 		}
 
 		const std::string strVT100ClearLine = "\33[2K\r";
-		std::cerr << strVT100ClearLine << "Total: " << formatSpeed(speedTotal) << " -" << strGPUs << '\r' << std::flush;
+		const auto seconds = std::chrono::duration_cast<std::chrono::seconds>(std::chrono::steady_clock::now() - timeStart).count();
+
+		std::cerr << strVT100ClearLine << "Time running: " << seconds << "s Total speed: " << formatSpeed(speedTotal) << " -" << strGPUs << '\r' << std::flush;
 		m_countPrint = 0;
 	}
 }
