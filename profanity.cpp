@@ -405,7 +405,7 @@ int main(int argc, char **argv)
 
 		// Build the program
 		std::cout << "  Building program..." << std::flush;
-		const std::string strBuildOptions = "-D PROFANITY_INVERSE_SIZE=" + toString(inverseSize) + " -D PROFANITY_MAX_SCORE=" + toString(PROFANITY_MAX_SCORE) + " -D PROFANITY_RESULT_AMOUNT=" + toString(PROFANITY_RESULT_AMOUNT);
+		const std::string strBuildOptions = "-D PROFANITY_INVERSE_SIZE=" + toString(inverseSize) + " -D PROFANITY_MAX_SCORE=" + toString(PROFANITY_MAX_SCORE);
 		if (printResult(clBuildProgram(clProgram, vDevices.size(), vDevices.data(), strBuildOptions.c_str(), NULL, NULL)))
 		{
 #ifdef PROFANITY_DEBUG
