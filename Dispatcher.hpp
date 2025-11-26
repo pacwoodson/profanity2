@@ -68,7 +68,6 @@ private:
 
 		cl_uint m_lastCounter;
 
-
 		// Data parameters used in some modes
 		CLMemory<cl_uchar> m_memData1;
 		CLMemory<cl_uchar> m_memData2;
@@ -88,7 +87,7 @@ private:
 	};
 
 public:
-	Dispatcher(cl_context &clContext, cl_program &clProgram, const Mode mode, const size_t worksizeMax, const size_t inverseSize, const size_t inverseMultiple, const cl_uchar clScoreQuit, const std::string &seedPublicKey, const std::string &outputFile);
+	Dispatcher(cl_context &clContext, cl_program &clProgram, const Mode mode, const size_t worksizeMax, const size_t inverseSize, const size_t inverseMultiple, const cl_uchar clScoreQuit, const std::string &seedPublicKey, const std::string &outputFile, cl_uchar scoreMin);
 	~Dispatcher();
 
 	void addDevice(cl_device_id clDeviceId, const size_t worksizeLocal, const size_t index);
@@ -122,6 +121,7 @@ private: /* Instance variables */
 	const size_t m_worksizeMax;
 	const size_t m_inverseSize;
 	const size_t m_size;
+	cl_uchar m_clScoreMin;
 	cl_uchar m_clScoreMax;
 	cl_uchar m_clScoreQuit;
 

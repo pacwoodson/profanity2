@@ -26,7 +26,7 @@ typedef struct {
 typedef struct
 {
 	cl_uint foundId;
-	cl_uint score;
+	cl_uchar score;
 	cl_uchar foundHash[20];
 } kernel_result;
 

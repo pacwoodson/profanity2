@@ -494,7 +494,7 @@ void point_add(point *const r, point *const p, point *const o) {
 /* ------------------------------------------------------------------------ */
 typedef struct {
   uint foundId;
-  uint score;
+  uchar score;
   uchar foundHash[20];
 } result;
 
@@ -779,9 +779,9 @@ __kernel void profanity_iterate(__global mp_number *const pDeltaX,
 
 void profanity_result_update(const size_t id, __global const uchar *const hash,
                              __global result *const pResult, const uchar score,
-                             const uchar scoreMax,
+                             const uchar scoreMin,
                              __global uint *const pResultIndex) {
-  if (score > 5) {
+  if (score >= scoreMin) {
     uint index = atomic_inc(pResultIndex);
     if (index > PROFANITY_RESULT_AMOUNT)
       return;
@@ -825,24 +825,24 @@ __kernel void profanity_score_benchmark(__global mp_number *const pInverse,
                                         __global result *const pResult,
                                         __constant const uchar *const data1,
                                         __constant const uchar *const data2,
-                                        const uchar scoreMax,
+                                        const uchar scoreMin,
                                         __global uint *const pResultIndex) {
   const size_t id = get_global_id(0);
   __global const uchar *const hash = pInverse[id].d;
-  int score = 0;
+  uchar score = 0;
 
-  profanity_result_update(id, hash, pResult, score, scoreMax, pResultIndex);
+  profanity_result_update(id, hash, pResult, score, scoreMin, pResultIndex);
 }
 
 __kernel void profanity_score_matching(__global mp_number *const pInverse,
                                        __global result *const pResult,
                                        __constant const uchar *const data1,
                                        __constant const uchar *const data2,
-                                       const uchar scoreMax,
+                                       const uchar scoreMin,
                                        __global uint *const pResultIndex) {
   const size_t id = get_global_id(0);
   __global const uchar *const hash = pInverse[id].d;
-  int score = 0;
+  uchar score = 0;
 
   for (int i = 0; i < 20; ++i) {
     if (data1[i] > 0 && (hash[i] & data1[i]) == data2[i]) {
@@ -850,18 +850,18 @@ __kernel void profanity_score_matching(__global mp_number *const pInverse,
     }
   }
 
-  profanity_result_update(id, hash, pResult, score, scoreMax, pResultIndex);
+  profanity_result_update(id, hash, pResult, score, scoreMin, pResultIndex);
 }
 
 __kernel void profanity_score_leading(__global mp_number *const pInverse,
                                       __global result *const pResult,
                                       __constant const uchar *const data1,
                                       __constant const uchar *const data2,
-                                      const uchar scoreMax,
+                                      const uchar scoreMin,
                                       __global uint *const pResultIndex) {
   const size_t id = get_global_id(0);
   __global const uchar *const hash = pInverse[id].d;
-  int score = 0;
+  uchar score = 0;
 
   for (int i = 0; i < 20; ++i) {
     if ((hash[i] & 0xF0) >> 4 == data1[0]) {
@@ -877,18 +877,18 @@ __kernel void profanity_score_leading(__global mp_number *const pInverse,
     }
   }
 
-  profanity_result_update(id, hash, pResult, score, scoreMax, pResultIndex);
+  profanity_result_update(id, hash, pResult, score, scoreMin, pResultIndex);
 }
 
 __kernel void profanity_score_range(__global mp_number *const pInverse,
                                     __global result *const pResult,
                                     __constant const uchar *const data1,
                                     __constant const uchar *const data2,
-                                    const uchar scoreMax,
+                                    const uchar scoreMin,
                                     __global uint *const pResultIndex) {
   const size_t id = get_global_id(0);
   __global const uchar *const hash = pInverse[id].d;
-  int score = 0;
+  uchar score = 0;
 
   for (int i = 0; i < 20; ++i) {
     const uchar first = (hash[i] & 0xF0) >> 4;
@@ -903,18 +903,18 @@ __kernel void profanity_score_range(__global mp_number *const pInverse,
     }
   }
 
-  profanity_result_update(id, hash, pResult, score, scoreMax, pResultIndex);
+  profanity_result_update(id, hash, pResult, score, scoreMin, pResultIndex);
 }
 
 __kernel void profanity_score_zerobytes(__global mp_number *const pInverse,
                                         __global result *const pResult,
                                         __constant const uchar *const data1,
                                         __constant const uchar *const data2,
-                                        const uchar scoreMax,
+                                        const uchar scoreMin,
                                         __global uint *const pResultIndex) {
   const size_t id = get_global_id(0);
   __global const uchar *const hash = pInverse[id].d;
-  int score = 0;
+  uchar score = 0;
 
   for (int i = 0; i < 20; ++i) {
     if (hash[i] == 0) {
@@ -922,18 +922,18 @@ __kernel void profanity_score_zerobytes(__global mp_number *const pInverse,
     }
   }
 
-  profanity_result_update(id, hash, pResult, score, scoreMax, pResultIndex);
+  profanity_result_update(id, hash, pResult, score, scoreMin, pResultIndex);
 }
 
 __kernel void profanity_score_leadingrange(__global mp_number *const pInverse,
                                            __global result *const pResult,
                                            __constant const uchar *const data1,
                                            __constant const uchar *const data2,
-                                           const uchar scoreMax,
+                                           const uchar scoreMin,
                                            __global uint *const pResultIndex) {
   const size_t id = get_global_id(0);
   __global const uchar *const hash = pInverse[id].d;
-  int score = 0;
+  uchar score = 0;
 
   for (int i = 0; i < 20; ++i) {
     const uchar first = (hash[i] & 0xF0) >> 4;
@@ -952,18 +952,18 @@ __kernel void profanity_score_leadingrange(__global mp_number *const pInverse,
     }
   }
 
-  profanity_result_update(id, hash, pResult, score, scoreMax, pResultIndex);
+  profanity_result_update(id, hash, pResult, score, scoreMin, pResultIndex);
 }
 
 __kernel void profanity_score_mirror(__global mp_number *const pInverse,
                                      __global result *const pResult,
                                      __constant const uchar *const data1,
                                      __constant const uchar *const data2,
-                                     const uchar scoreMax,
+                                     const uchar scoreMin,
                                      __global uint *const pResultIndex) {
   const size_t id = get_global_id(0);
   __global const uchar *const hash = pInverse[id].d;
-  int score = 0;
+  uchar score = 0;
 
   for (int i = 0; i < 10; ++i) {
     const uchar leftLeft = (hash[9 - i] & 0xF0) >> 4;
@@ -985,18 +985,18 @@ __kernel void profanity_score_mirror(__global mp_number *const pInverse,
     ++score;
   }
 
-  profanity_result_update(id, hash, pResult, score, scoreMax, pResultIndex);
+  profanity_result_update(id, hash, pResult, score, scoreMin, pResultIndex);
 }
 
 __kernel void profanity_score_doubles(__global mp_number *const pInverse,
                                       __global result *const pResult,
                                       __constant const uchar *const data1,
                                       __constant const uchar *const data2,
-                                      const uchar scoreMax,
+                                      const uchar scoreMin,
                                       __global uint *const pResultIndex) {
   const size_t id = get_global_id(0);
   __global const uchar *const hash = pInverse[id].d;
-  int score = 0;
+  uchar score = 0;
 
   for (int i = 0; i < 20; ++i) {
     if ((hash[i] == 0x00) || (hash[i] == 0x11) || (hash[i] == 0x22) ||
@@ -1011,5 +1011,5 @@ __kernel void profanity_score_doubles(__global mp_number *const pInverse,
     }
   }
 
-  profanity_result_update(id, hash, pResult, score, scoreMax, pResultIndex);
+  profanity_result_update(id, hash, pResult, score, scoreMin, pResultIndex);
 }

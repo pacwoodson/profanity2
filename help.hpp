@@ -18,6 +18,7 @@ usage: ./profanity2 [OPTIONS]
     --mirror                Score on mirroring from center.
     --leading-doubles       Score on hashes leading with hexadecimal pairs
     -b, --zero-bytes        Score on hashes containing the most zero bytes
+    -h, --score-min <size>  Minimum score to search (default 8)
 
   Modes with arguments:
     --leading <single hex>  Score on hashes leading with given hex character.
@@ -36,7 +37,7 @@ usage: ./profanity2 [OPTIONS]
     -M, --max <0-15>        Set range maximum (inclusive), 0 is '0' 15 is 'f'.
 
   Device control:
-    -s, --skip <index>      Skip device given by index.
+    -S, --skip <index>      Skip device given by index.
     -n, --no-cache          Don't load cached pre-compiled version of kernel.
 
   Tweaking:

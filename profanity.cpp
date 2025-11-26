@@ -133,7 +133,7 @@ unsigned int getUniqueDeviceIdentifier(const cl_device_id &deviceId)
 	// 		return (topology.pcie.bus << 16) + (topology.pcie.device << 8) + topology.pcie.function;
 	// 	}
 	// #endif
-	
+
 	cl_int bus_id = clGetWrapper<cl_int>(clGetDeviceInfo, deviceId, CL_DEVICE_PCI_BUS_ID_NV);
 	cl_int slot_id = clGetWrapper<cl_int>(clGetDeviceInfo, deviceId, CL_DEVICE_PCI_SLOT_ID_NV);
 	return (bus_id << 16) + slot_id;
@@ -191,6 +191,7 @@ int main(int argc, char **argv)
 		size_t inverseMultiple = 16384;
 		bool bMineContract = false;
 
+		unsigned char scoreMin = 8;
 		std::string outputPath;
 
 		argp.addSwitch('h', "help", bHelp);
@@ -216,6 +217,7 @@ int main(int argc, char **argv)
 		argp.addSwitch('z', "publicKey", strPublicKey);
 		argp.addSwitch('b', "zero-bytes", bModeZeroBytes);
 
+		argp.addSwitch('S', "score-min", scoreMin);
 		argp.addSwitch('o', "output", outputPath);
 
 		if (!argp.parse())
@@ -438,7 +440,7 @@ int main(int argc, char **argv)
 
 		std::cout << std::endl;
 
-		Dispatcher d(clContext, clProgram, mode, worksizeMax == 0 ? inverseSize * inverseMultiple : worksizeMax, inverseSize, inverseMultiple, 0, strPublicKey, outputPath);
+		Dispatcher d(clContext, clProgram, mode, worksizeMax == 0 ? inverseSize * inverseMultiple : worksizeMax, inverseSize, inverseMultiple, 0, strPublicKey, outputPath, scoreMin);
 		for (auto &i : vDevices)
 		{
 			d.addDevice(i, worksizeLocal, mDeviceIndex[i]);

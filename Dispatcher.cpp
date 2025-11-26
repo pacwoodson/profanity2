@@ -73,6 +73,38 @@ static std::string toHex(const uint8_t * const s, const size_t len) {
 	return r;
 }
 
+static std::string getResultLine(cl_ulong4 seed, cl_ulong round, kernel_result r, cl_uchar score, const std::chrono::time_point<std::chrono::steady_clock> & timeStart, const Mode & mode)
+{const auto seconds = std::chrono::duration_cast<std::chrono::seconds>(std::chrono::steady_clock::now() - timeStart).count();
+
+	// Format private key
+	cl_ulong carry = 0;
+	cl_ulong4 seedRes;
+
+	seedRes.s[0] = seed.s[0] + round; carry = seedRes.s[0] < round;
+	seedRes.s[1] = seed.s[1] + carry; carry = !seedRes.s[1];
+	seedRes.s[2] = seed.s[2] + carry; carry = !seedRes.s[2];
+	seedRes.s[3] = seed.s[3] + carry + r.foundId;
+
+	std::ostringstream ss;
+	std::ostringstream allLineSS;
+	
+	ss << std::hex << std::setfill('0');
+	ss << std::setw(16) << seedRes.s[3] << std::setw(16) << seedRes.s[2] << std::setw(16) << seedRes.s[1] << std::setw(16) << seedRes.s[0];
+	const std::string strPrivate = ss.str();
+
+	// Format public key
+	const std::string strPublic = toHex(r.foundHash, 20);
+
+	// Print
+	allLineSS << "  Time: " << std::setw(5) << seconds << "s Score: " << std::setw(2) << (int) score << " Private: 0x" << strPrivate << ' ';
+
+	allLineSS << mode.transformName();
+	allLineSS << ": 0x" << strPublic;
+	
+	const std::string allLine = allLineSS.str();
+	return allLine;
+}
+/*
 static std::string getResultLine(const result &r, const Mode &mode)
 {
 	// Format private key
@@ -99,14 +131,14 @@ static std::string getResultLine(const result &r, const Mode &mode)
 
 	// Print
 	allLineSS << "  Time: " << std::setw(5) << r.seconds;
-	allLineSS << "s Score: " << std::setw(2) << (int)r.score;
+	allLineSS << "s Score: " << std::setw(2) << static_cast<unsigned>(r.score);
 	allLineSS << " Private: 0x" << strPrivate << ' ';
 	allLineSS << mode.transformName() << ": 0x" << strPublic;
 
 	const std::string allLine = allLineSS.str();
 	return allLine;
 }
-
+*/
 
 static void printResult(const std::string &resultLine, const std::string &outputPath)
 {
@@ -222,13 +254,14 @@ Dispatcher::Device::~Device() {
 
 }
 
-Dispatcher::Dispatcher(cl_context & clContext, cl_program & clProgram, const Mode mode, const size_t worksizeMax, const size_t inverseSize, const size_t inverseMultiple, const cl_uchar clScoreQuit, const std::string & seedPublicKey, const std::string &outputFile)
+Dispatcher::Dispatcher(cl_context & clContext, cl_program & clProgram, const Mode mode, const size_t worksizeMax, const size_t inverseSize, const size_t inverseMultiple, const cl_uchar clScoreQuit, const std::string & seedPublicKey, const std::string &outputFile, cl_uchar scoreMin)
 	: m_clContext(clContext)
 	, m_clProgram(clProgram)
 	, m_mode(mode)
 	, m_worksizeMax(worksizeMax)
 	, m_inverseSize(inverseSize)
 	, m_size(inverseSize*inverseMultiple)
+	, m_clScoreMin(scoreMin)
 	, m_clScoreMax(mode.score)
 	, m_clScoreQuit(clScoreQuit)
 	, m_eventFinished(NULL)
@@ -355,7 +388,7 @@ void Dispatcher::initBegin(Device & d) {
 	d.m_memData1.setKernelArg(d.m_kernelScore, 2);
 	d.m_memData2.setKernelArg(d.m_kernelScore, 3);
 
-	CLMemory<cl_uchar>::setKernelArg(d.m_kernelScore, 4, d.m_clScoreMax); // Updated in handleResult()
+	CLMemory<cl_uchar>::setKernelArg(d.m_kernelScore, 4, m_clScoreMin);
 	d.m_memResultCounter.setKernelArg(d.m_kernelScore, 5);
 
 	// Seed device
@@ -463,31 +496,6 @@ void Dispatcher::dispatch(Device & d) {
 }
 
 void Dispatcher::handleResult(Device & d) {
-	/*
-	for (auto i = PROFANITY_MAX_SCORE; i > m_clScoreMax; --i) {
-		result & r = d.m_memResult[i];
-
-		if (r.found > 0 && i >= d.m_clScoreMax) {
-			d.m_clScoreMax = i;
-			CLMemory<cl_uchar>::setKernelArg(d.m_kernelScore, 4, d.m_clScoreMax);
-
-			std::lock_guard<std::mutex> lock(m_mutex);
-			if (i >= m_clScoreMax) {
-				m_clScoreMax = i;
-
-				if (m_clScoreQuit && i >= m_clScoreQuit) {
-					m_quit = true;
-				}
-
-				const std::string resultLine = getResultLine(d.m_clSeed, d.m_round, r, i, timeStart, m_mode);
-				printResult(resultLine, m_outputPath);
-			}
-
-			break;
-		}
-	}
-		*/
-	// Read back the kernel_result counter to see how many results were found
 	d.m_memResultCounter.read(true);
 	cl_uint numResults = d.m_memResultCounter[0];
 
@@ -499,6 +507,8 @@ void Dispatcher::handleResult(Device & d) {
 
 	if (numResults > d.m_lastCounter)
 	{
+		std::cout << "presultindex" << numResults <<std::endl;
+		
 		d.m_memResult.read(true);
 		const auto seconds = std::chrono::duration_cast<std::chrono::seconds>(std::chrono::steady_clock::now() - timeStart).count();
 
@@ -515,7 +525,8 @@ void Dispatcher::handleResult(Device & d) {
 			std::memcpy(r.foundHash, k_r.foundHash, 20 * sizeof(cl_uchar));
 			m_results.push_back(r);
 
-			const std::string resultLine = getResultLine(r, m_mode);
+			// const std::string resultLine = getResultLine(r, m_mode);
+			const std::string resultLine = getResultLine(d.m_clSeed, d.m_round, k_r, k_r.score, timeStart, m_mode);
 			printResult(resultLine, m_outputPath);
 
 			if (m_clScoreQuit && r.score >= m_clScoreQuit)
