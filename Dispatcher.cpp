@@ -508,28 +508,28 @@ void Dispatcher::handleResult(Device & d) {
 	if (numResults > d.m_lastCounter)
 	{
 		std::cout << "presultindex" << numResults <<std::endl;
-		
+
 		d.m_memResult.read(true);
 		const auto seconds = std::chrono::duration_cast<std::chrono::seconds>(std::chrono::steady_clock::now() - timeStart).count();
 
 		for (cl_uint i = d.m_lastCounter; i < numResults; ++i)
 		{
 			kernel_result const &k_r = d.m_memResult[i];
-			result r;
-			r.seed = d.m_clSeed;
-			r.round = d.m_round;
-			r.foundId = k_r.foundId;
-			r.score = k_r.score;
-			r.seconds = seconds;
 
-			std::memcpy(r.foundHash, k_r.foundHash, 20 * sizeof(cl_uchar));
-			m_results.push_back(r);
+			// result r;
+			// r.seed = d.m_clSeed;
+			// r.round = d.m_round;
+			// r.foundId = k_r.foundId;
+			// r.score = k_r.score;
+			// r.seconds = seconds;
+			// std::memcpy(r.foundHash, k_r.foundHash, 20 * sizeof(cl_uchar));
+			// m_results.push_back(r);
 
 			// const std::string resultLine = getResultLine(r, m_mode);
 			const std::string resultLine = getResultLine(d.m_clSeed, d.m_round, k_r, k_r.score, timeStart, m_mode);
 			printResult(resultLine, m_outputPath);
 
-			if (m_clScoreQuit && r.score >= m_clScoreQuit)
+			if (m_clScoreQuit && k_r.score >= m_clScoreQuit)
 			{
 				m_quit = true;
 			}
