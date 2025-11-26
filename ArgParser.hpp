@@ -47,6 +47,11 @@ class ArgParser {
 		ArgParser(int argc, char * * argv) {
 			for (int i = 1; i < argc; ++i) {
 				m_args.push_back(argv[i]);
+				m_args_str += argv[i];
+				if (i != argc - 1)
+				{
+					m_args_str += " ";
+				}
 			}
 		}
 
@@ -99,8 +104,15 @@ class ArgParser {
 			return true;
 		}
 
+		const std::string getStr() const
+		{
+			return m_args_str;
+		}
+
 	private:
 		std::vector<std::string> m_args;
+		std::string m_args_str;
+
 		std::map<std::string, std::pair<bool, IArgument *>> m_mapArgs;
 };
 

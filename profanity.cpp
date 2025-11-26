@@ -17,7 +17,7 @@
 #include <CL/cl_ext.h> // Included to get topology to get an actual unique identifier per device
 #endif
 
-#define CL_DEVICE_PCI_BUS_ID_NV  0x4008
+#define CL_DEVICE_PCI_BUS_ID_NV 0x4008
 #define CL_DEVICE_PCI_SLOT_ID_NV 0x4009
 
 #include "Dispatcher.hpp"
@@ -25,7 +25,7 @@
 #include "Mode.hpp"
 #include "help.hpp"
 
-std::string readFile(const char * const szFilename)
+std::string readFile(const char *const szFilename)
 {
 	std::ifstream in(szFilename, std::ios::in | std::ios::binary);
 	std::ostringstream contents;
@@ -38,36 +38,39 @@ std::vector<cl_device_id> getAllDevices(cl_device_type deviceType = CL_DEVICE_TY
 	std::vector<cl_device_id> vDevices;
 
 	cl_uint platformIdCount = 0;
-	clGetPlatformIDs (0, NULL, &platformIdCount);
+	clGetPlatformIDs(0, NULL, &platformIdCount);
 
-	std::vector<cl_platform_id> platformIds (platformIdCount);
-	clGetPlatformIDs (platformIdCount, platformIds.data (), NULL);
+	std::vector<cl_platform_id> platformIds(platformIdCount);
+	clGetPlatformIDs(platformIdCount, platformIds.data(), NULL);
 
-	for( auto it = platformIds.cbegin(); it != platformIds.cend(); ++it ) {
+	for (auto it = platformIds.cbegin(); it != platformIds.cend(); ++it)
+	{
 		cl_uint countDevice;
 		clGetDeviceIDs(*it, deviceType, 0, NULL, &countDevice);
 
 		std::vector<cl_device_id> deviceIds(countDevice);
 		clGetDeviceIDs(*it, deviceType, countDevice, deviceIds.data(), &countDevice);
 
-		std::copy( deviceIds.begin(), deviceIds.end(), std::back_inserter(vDevices) );
+		std::copy(deviceIds.begin(), deviceIds.end(), std::back_inserter(vDevices));
 	}
 
 	return vDevices;
 }
 
 template <typename T, typename U, typename V, typename W>
-T clGetWrapper(U function, V param, W param2) {
+T clGetWrapper(U function, V param, W param2)
+{
 	T t;
 	function(param, param2, sizeof(t), &t, NULL);
 	return t;
 }
 
 template <typename U, typename V, typename W>
-std::string clGetWrapperString(U function, V param, W param2) {
+std::string clGetWrapperString(U function, V param, W param2)
+{
 	size_t len;
 	function(param, param2, 0, NULL, &len);
-	char * const szString = new char[len];
+	char *const szString = new char[len];
 	function(param, param2, len, szString, NULL);
 	std::string r(szString);
 	delete[] szString;
@@ -75,15 +78,18 @@ std::string clGetWrapperString(U function, V param, W param2) {
 }
 
 template <typename T, typename U, typename V, typename W>
-std::vector<T> clGetWrapperVector(U function, V param, W param2) {
+std::vector<T> clGetWrapperVector(U function, V param, W param2)
+{
 	size_t len;
 	function(param, param2, 0, NULL, &len);
 	len /= sizeof(T);
 	std::vector<T> v;
-	if (len > 0) {
-		T * pArray = new T[len];
+	if (len > 0)
+	{
+		T *pArray = new T[len];
 		function(param, param2, len * sizeof(T), pArray, NULL);
-		for (size_t i = 0; i < len; ++i) {
+		for (size_t i = 0; i < len; ++i)
+		{
 			v.push_back(pArray[i]);
 		}
 		delete[] pArray;
@@ -91,17 +97,21 @@ std::vector<T> clGetWrapperVector(U function, V param, W param2) {
 	return v;
 }
 
-std::vector<std::string> getBinaries(cl_program & clProgram) {
+std::vector<std::string> getBinaries(cl_program &clProgram)
+{
 	std::vector<std::string> vReturn;
 	auto vSizes = clGetWrapperVector<size_t>(clGetProgramInfo, clProgram, CL_PROGRAM_BINARY_SIZES);
-	if (!vSizes.empty()) {
-		unsigned char * * pBuffers = new unsigned char *[vSizes.size()];
-		for (size_t i = 0; i < vSizes.size(); ++i) {
+	if (!vSizes.empty())
+	{
+		unsigned char **pBuffers = new unsigned char *[vSizes.size()];
+		for (size_t i = 0; i < vSizes.size(); ++i)
+		{
 			pBuffers[i] = new unsigned char[vSizes[i]];
 		}
 
 		clGetProgramInfo(clProgram, CL_PROGRAM_BINARIES, vSizes.size() * sizeof(unsigned char *), pBuffers, NULL);
-		for (size_t i = 0; i < vSizes.size(); ++i) {
+		for (size_t i = 0; i < vSizes.size(); ++i)
+		{
 			std::string strData(reinterpret_cast<char *>(pBuffers[i]), vSizes[i]);
 			vReturn.push_back(strData);
 			delete[] pBuffers[i];
@@ -113,10 +123,12 @@ std::vector<std::string> getBinaries(cl_program & clProgram) {
 	return vReturn;
 }
 
-unsigned int getUniqueDeviceIdentifier(const cl_device_id & deviceId) {
+unsigned int getUniqueDeviceIdentifier(const cl_device_id &deviceId)
+{
 #if defined(CL_DEVICE_TOPOLOGY_AMD)
 	auto topology = clGetWrapper<cl_device_topology_amd>(clGetDeviceInfo, deviceId, CL_DEVICE_TOPOLOGY_AMD);
-	if (topology.raw.type == CL_DEVICE_TOPOLOGY_TYPE_PCIE_AMD) {
+	if (topology.raw.type == CL_DEVICE_TOPOLOGY_TYPE_PCIE_AMD)
+	{
 		return (topology.pcie.bus << 16) + (topology.pcie.device << 8) + topology.pcie.function;
 	}
 #endif
@@ -125,28 +137,34 @@ unsigned int getUniqueDeviceIdentifier(const cl_device_id & deviceId) {
 	return (bus_id << 16) + slot_id;
 }
 
-template <typename T> bool printResult(const T & t, const cl_int & err) {
+template <typename T>
+bool printResult(const T &t, const cl_int &err)
+{
 	std::cout << ((t == NULL) ? toString(err) : "OK") << std::endl;
 	return t == NULL;
 }
 
-bool printResult(const cl_int err) {
+bool printResult(const cl_int err)
+{
 	std::cout << ((err != CL_SUCCESS) ? toString(err) : "OK") << std::endl;
 	return err != CL_SUCCESS;
 }
 
-std::string getDeviceCacheFilename(cl_device_id & d, const size_t & inverseSize) {
+std::string getDeviceCacheFilename(cl_device_id &d, const size_t &inverseSize)
+{
 	const auto uniqueId = getUniqueDeviceIdentifier(d);
 	return "cache-opencl." + toString(inverseSize) + "." + toString(uniqueId);
 }
 
-int main(int argc, char * * argv) {
+int main(int argc, char **argv)
+{
 	// THIS LINE WILL LEAD TO A COMPILE ERROR. THIS TOOL SHOULD NOT BE USED, SEE README.
 
 	// ^^ Commented previous line and excluded private key generation out of scope of this project,
 	// now it only advances provided public key to a random offset to find vanity address
 
-	try {
+	try
+	{
 		ArgParser argp(argc, argv);
 		bool bHelp = false;
 		bool bModeBenchmark = false;
@@ -171,6 +189,8 @@ int main(int argc, char * * argv) {
 		size_t inverseMultiple = 16384;
 		bool bMineContract = false;
 
+		std::string outputPath;
+
 		argp.addSwitch('h', "help", bHelp);
 		argp.addSwitch('0', "benchmark", bModeBenchmark);
 		argp.addSwitch('1', "zeros", bModeZeros);
@@ -194,62 +214,100 @@ int main(int argc, char * * argv) {
 		argp.addSwitch('z', "publicKey", strPublicKey);
 		argp.addSwitch('b', "zero-bytes", bModeZeroBytes);
 
-		if (!argp.parse()) {
+		argp.addSwitch('o', "output", outputPath);
+
+		if (!argp.parse())
+		{
 			std::cout << "error: bad arguments, try again :<" << std::endl;
 			return 1;
 		}
 
-		if (bHelp) {
+		if (bHelp)
+		{
 			std::cout << g_strHelp << std::endl;
 			return 0;
 		}
 
+		if (!outputPath.empty())
+		{
+			std::ofstream outputFile(outputPath, std::ios::app);
+			outputFile << "--------" << std::endl;
+			outputFile << "Executing with: " << argp.getStr() << std::endl;
+		}
 		Mode mode = Mode::benchmark();
-		if (bModeBenchmark) {
+		if (bModeBenchmark)
+		{
 			mode = Mode::benchmark();
-		} else if (bModeZeros) {
+		}
+		else if (bModeZeros)
+		{
 			mode = Mode::zeros();
-		} else if (bModeLetters) {
+		}
+		else if (bModeLetters)
+		{
 			mode = Mode::letters();
-		} else if (bModeNumbers) {
+		}
+		else if (bModeNumbers)
+		{
 			mode = Mode::numbers();
-		} else if (!strModeLeading.empty()) {
+		}
+		else if (!strModeLeading.empty())
+		{
 			mode = Mode::leading(strModeLeading.front());
-		} else if (!strModeMatching.empty()) {
+		}
+		else if (!strModeMatching.empty())
+		{
 			mode = Mode::matching(strModeMatching);
-		} else if (bModeLeadingRange) {
+		}
+		else if (bModeLeadingRange)
+		{
 			mode = Mode::leadingRange(rangeMin, rangeMax);
-		} else if (bModeRange) {
+		}
+		else if (bModeRange)
+		{
 			mode = Mode::range(rangeMin, rangeMax);
-		} else if(bModeMirror) {
+		}
+		else if (bModeMirror)
+		{
 			mode = Mode::mirror();
-		} else if (bModeDoubles) {
+		}
+		else if (bModeDoubles)
+		{
 			mode = Mode::doubles();
-		} else if (bModeZeroBytes) {
+		}
+		else if (bModeZeroBytes)
+		{
 			mode = Mode::zeroBytes();
-		} else {
+		}
+		else
+		{
 			std::cout << g_strHelp << std::endl;
 			return 0;
 		}
-		
-		if (strPublicKey.length() == 0) {
+
+		if (strPublicKey.length() == 0)
+		{
 			std::cout << "error: this tool requires your public key to derive it's private key security" << std::endl;
 			return 1;
 		}
 
-		if (strPublicKey.length() != 128) {
+		if (strPublicKey.length() != 128)
+		{
 			std::cout << "error: public key must be 128 hexademical characters long" << std::endl;
 			return 1;
 		}
 
 		std::cout << "Mode: " << mode.name << std::endl;
 
-		if (bMineContract) {
+		if (bMineContract)
+		{
 			mode.target = CONTRACT;
-		} else {
+		}
+		else
+		{
 			mode.target = ADDRESS;
 		}
-		std::cout << "Target: " << mode.transformName() << std:: endl;
+		std::cout << "Target: " << mode.transformName() << std::endl;
 
 		std::vector<cl_device_id> vFoundDevices = getAllDevices();
 		std::vector<cl_device_id> vDevices;
@@ -261,13 +319,15 @@ int main(int argc, char * * argv) {
 		bool bUsedCache = false;
 
 		std::cout << "Devices:" << std::endl;
-		for (size_t i = 0; i < vFoundDevices.size(); ++i) {
+		for (size_t i = 0; i < vFoundDevices.size(); ++i)
+		{
 			// Ignore devices in skip index
-			if (std::find(vDeviceSkipIndex.begin(), vDeviceSkipIndex.end(), i) != vDeviceSkipIndex.end()) {
+			if (std::find(vDeviceSkipIndex.begin(), vDeviceSkipIndex.end(), i) != vDeviceSkipIndex.end())
+			{
 				continue;
 			}
 
-			cl_device_id & deviceId = vFoundDevices[i];
+			cl_device_id &deviceId = vFoundDevices[i];
 
 			const auto strName = clGetWrapperString(clGetDeviceInfo, deviceId, CL_DEVICE_NAME);
 			const auto computeUnits = clGetWrapper<cl_uint>(clGetDeviceInfo, deviceId, CL_DEVICE_MAX_COMPUTE_UNITS);
@@ -275,9 +335,11 @@ int main(int argc, char * * argv) {
 			bool precompiled = false;
 
 			// Check if there's a prebuilt binary for this device and load it
-			if(!bNoCache) {
+			if (!bNoCache)
+			{
 				std::ifstream fileIn(getDeviceCacheFilename(deviceId, inverseSize), std::ios::binary);
-				if (fileIn.is_open()) {
+				if (fileIn.is_open())
+				{
 					vDeviceBinary.push_back(std::string((std::istreambuf_iterator<char>(fileIn)), std::istreambuf_iterator<char>()));
 					vDeviceBinarySize.push_back(vDeviceBinary.back().size());
 					precompiled = true;
@@ -289,44 +351,52 @@ int main(int argc, char * * argv) {
 			mDeviceIndex[vFoundDevices[i]] = i;
 		}
 
-		if (vDevices.empty()) {
+		if (vDevices.empty())
+		{
 			return 1;
 		}
 
 		std::cout << std::endl;
 		std::cout << "Initializing OpenCL..." << std::endl;
 		std::cout << "  Creating context..." << std::flush;
-		auto clContext = clCreateContext( NULL, vDevices.size(), vDevices.data(), NULL, NULL, &errorCode);
-		if (printResult(clContext, errorCode)) {
+		auto clContext = clCreateContext(NULL, vDevices.size(), vDevices.data(), NULL, NULL, &errorCode);
+		if (printResult(clContext, errorCode))
+		{
 			return 1;
 		}
 
 		cl_program clProgram;
-		if (vDeviceBinary.size() == vDevices.size()) {
+		if (vDeviceBinary.size() == vDevices.size())
+		{
 			// Create program from binaries
 			bUsedCache = true;
 
 			std::cout << "  Loading kernel from binary..." << std::flush;
-			const unsigned char * * pKernels = new const unsigned char *[vDevices.size()];
-			for (size_t i = 0; i < vDeviceBinary.size(); ++i) {
+			const unsigned char **pKernels = new const unsigned char *[vDevices.size()];
+			for (size_t i = 0; i < vDeviceBinary.size(); ++i)
+			{
 				pKernels[i] = reinterpret_cast<const unsigned char *>(vDeviceBinary[i].data());
 			}
 
-			cl_int * pStatus = new cl_int[vDevices.size()];
+			cl_int *pStatus = new cl_int[vDevices.size()];
 
 			clProgram = clCreateProgramWithBinary(clContext, vDevices.size(), vDevices.data(), vDeviceBinarySize.data(), pKernels, pStatus, &errorCode);
-			if(printResult(clProgram, errorCode)) {
+			if (printResult(clProgram, errorCode))
+			{
 				return 1;
 			}
-		} else {
+		}
+		else
+		{
 			// Create a program from the kernel source
 			std::cout << "  Compiling kernel..." << std::flush;
 			const std::string strKeccak = readFile("keccak.cl");
 			const std::string strVanity = readFile("profanity.cl");
-			const char * szKernels[] = { strKeccak.c_str(), strVanity.c_str() };
+			const char *szKernels[] = {strKeccak.c_str(), strVanity.c_str()};
 
 			clProgram = clCreateProgramWithSource(clContext, sizeof(szKernels) / sizeof(char *), szKernels, NULL, &errorCode);
-			if (printResult(clProgram, errorCode)) {
+			if (printResult(clProgram, errorCode))
+			{
 				return 1;
 			}
 		}
@@ -334,14 +404,15 @@ int main(int argc, char * * argv) {
 		// Build the program
 		std::cout << "  Building program..." << std::flush;
 		const std::string strBuildOptions = "-D PROFANITY_INVERSE_SIZE=" + toString(inverseSize) + " -D PROFANITY_MAX_SCORE=" + toString(PROFANITY_MAX_SCORE);
-		if (printResult(clBuildProgram(clProgram, vDevices.size(), vDevices.data(), strBuildOptions.c_str(), NULL, NULL))) {
+		if (printResult(clBuildProgram(clProgram, vDevices.size(), vDevices.data(), strBuildOptions.c_str(), NULL, NULL)))
+		{
 #ifdef PROFANITY_DEBUG
 			std::cout << std::endl;
 			std::cout << "build log:" << std::endl;
 
 			size_t sizeLog;
 			clGetProgramBuildInfo(clProgram, vDevices[0], CL_PROGRAM_BUILD_LOG, 0, NULL, &sizeLog);
-			char * const szLog = new char[sizeLog];
+			char *const szLog = new char[sizeLog];
 			clGetProgramBuildInfo(clProgram, vDevices[0], CL_PROGRAM_BUILD_LOG, sizeLog, szLog, NULL);
 
 			std::cout << szLog << std::endl;
@@ -351,10 +422,12 @@ int main(int argc, char * * argv) {
 		}
 
 		// Save binary to improve future start times
-		if( !bUsedCache && !bNoCache ) {
+		if (!bUsedCache && !bNoCache)
+		{
 			std::cout << "  Saving program..." << std::flush;
 			auto binaries = getBinaries(clProgram);
-			for (size_t i = 0; i < binaries.size(); ++i) {
+			for (size_t i = 0; i < binaries.size(); ++i)
+			{
 				std::ofstream fileOut(getDeviceCacheFilename(vDevices[i], inverseSize), std::ios::binary);
 				fileOut.write(binaries[i].data(), binaries[i].size());
 			}
@@ -363,20 +436,24 @@ int main(int argc, char * * argv) {
 
 		std::cout << std::endl;
 
-		Dispatcher d(clContext, clProgram, mode, worksizeMax == 0 ? inverseSize * inverseMultiple : worksizeMax, inverseSize, inverseMultiple, 0, strPublicKey);
-		for (auto & i : vDevices) {
+		Dispatcher d(clContext, clProgram, mode, worksizeMax == 0 ? inverseSize * inverseMultiple : worksizeMax, inverseSize, inverseMultiple, 0, strPublicKey, outputPath);
+		for (auto &i : vDevices)
+		{
 			d.addDevice(i, worksizeLocal, mDeviceIndex[i]);
 		}
 
 		d.run();
 		clReleaseContext(clContext);
 		return 0;
-	} catch (std::runtime_error & e) {
+	}
+	catch (std::runtime_error &e)
+	{
 		std::cout << "std::runtime_error - " << e.what() << std::endl;
-	} catch (...) {
+	}
+	catch (...)
+	{
 		std::cout << "unknown exception occured" << std::endl;
 	}
 
 	return 1;
 }
-

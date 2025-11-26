@@ -3,3 +3,8 @@
 *.so
 cache-opencl.*
 bin
+
+
+.vscode
+profanity2.x64
+output.txt

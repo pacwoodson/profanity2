@@ -73,7 +73,7 @@ static std::string toHex(const uint8_t * const s, const size_t len) {
 	return r;
 }
 
-static void printResult(cl_ulong4 seed, cl_ulong round, result r, cl_uchar score, const std::chrono::time_point<std::chrono::steady_clock> & timeStart, const Mode & mode) {
+static std::string getResultLine(cl_ulong4 seed, cl_ulong round, result r, cl_uchar score, const std::chrono::time_point<std::chrono::steady_clock> & timeStart, const Mode & mode) {
 	// Time delta
 	const auto seconds = std::chrono::duration_cast<std::chrono::seconds>(std::chrono::steady_clock::now() - timeStart).count();
 
@@ -87,6 +87,8 @@ static void printResult(cl_ulong4 seed, cl_ulong round, result r, cl_uchar score
 	seedRes.s[3] = seed.s[3] + carry + r.foundId;
 
 	std::ostringstream ss;
+	std::ostringstream allLineSS;
+
 	ss << std::hex << std::setfill('0');
 	ss << std::setw(16) << seedRes.s[3] << std::setw(16) << seedRes.s[2] << std::setw(16) << seedRes.s[1] << std::setw(16) << seedRes.s[0];
 	const std::string strPrivate = ss.str();
@@ -95,12 +97,28 @@ static void printResult(cl_ulong4 seed, cl_ulong round, result r, cl_uchar score
 	const std::string strPublic = toHex(r.foundHash, 20);
 
 	// Print
-	const std::string strVT100ClearLine = "\33[2K\r";
-	std::cout << strVT100ClearLine << "  Time: " << std::setw(5) << seconds << "s Score: " << std::setw(2) << (int) score << " Private: 0x" << strPrivate << ' ';
+	allLineSS << "  Time: " << std::setw(5) << seconds;
+	allLineSS << "s Score: " << std::setw(2) << (int)score;
+	allLineSS << " Private: 0x" << strPrivate << ' ';
+	allLineSS << mode.transformName() << ": 0x" << strPublic;
 
-	std::cout << mode.transformName();
-	std::cout << ": 0x" << strPublic << std::endl;
+	const std::string allLine = allLineSS.str();
+	return allLine;
 }
+
+
+static void printResult(const std::string &resultLine, const std::string &outputPath)
+{
+	const std::string strVT100ClearLine = "\33[2K\r";
+	std::cout << strVT100ClearLine << resultLine << std::endl;
+
+	if (!outputPath.empty())
+	{
+		std::ofstream outputFile(outputPath, std::ios::app);
+		outputFile << resultLine << std::endl;
+	}
+}
+
 
 unsigned int getKernelExecutionTimeMicros(cl_event & e) {
 	cl_ulong timeStart = 0, timeEnd = 0;
@@ -201,7 +219,7 @@ Dispatcher::Device::~Device() {
 
 }
 
-Dispatcher::Dispatcher(cl_context & clContext, cl_program & clProgram, const Mode mode, const size_t worksizeMax, const size_t inverseSize, const size_t inverseMultiple, const cl_uchar clScoreQuit, const std::string & seedPublicKey)
+Dispatcher::Dispatcher(cl_context & clContext, cl_program & clProgram, const Mode mode, const size_t worksizeMax, const size_t inverseSize, const size_t inverseMultiple, const cl_uchar clScoreQuit, const std::string & seedPublicKey, const std::string &outputFile)
 	: m_clContext(clContext)
 	, m_clProgram(clProgram)
 	, m_mode(mode)
@@ -214,6 +232,7 @@ Dispatcher::Dispatcher(cl_context & clContext, cl_program & clProgram, const Mod
 	, m_countPrint(0)
 	, m_publicKeyX(fromHex(seedPublicKey.substr(0, 64)))
 	, m_publicKeyY(fromHex(seedPublicKey.substr(64, 64)))
+	, m_outputPath(outputFile)
 {
 }
 
@@ -449,7 +468,8 @@ void Dispatcher::handleResult(Device & d) {
 					m_quit = true;
 				}
 
-				printResult(d.m_clSeed, d.m_round, r, i, timeStart, m_mode);
+				const std::string resultLine = getResultLine(d.m_clSeed, d.m_round, r, i, timeStart, m_mode);
+				printResult(resultLine, m_outputPath);
 			}
 
 			break;

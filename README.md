@@ -86,6 +86,9 @@ usage: ./profanity2 [OPTIONS]
     -I, --inverse-multiple  Set how many above work items will run in
                             parallell. [default = 16384]
 
+  Output:
+    -o, --output <filepath> Append results to a text file
+
   Examples:
     ./profanity2 --leading f -z HEX_PUBLIC_KEY_128_CHARS_LONG
     ./profanity2 --matching dead -z HEX_PUBLIC_KEY_128_CHARS_LONG

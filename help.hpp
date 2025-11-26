@@ -46,6 +46,14 @@ usage: ./profanity2 [OPTIONS]
                             work item. [default = 255]
     -I, --inverse-multiple  Set how many above work items will run in
                             parallell. [default = 16384]
+    -a, --show-all-score <score>
+                            Show all results starting from this score threshold.
+                            Below this score, only one result per score level is
+                            shown (the first found). At or above this score, all
+                            results found are displayed. [default = 10]
+
+  Output:
+    -o, --output <filepath> Append results to a text file
 
   Examples:
     ./profanity2 --leading f -z HEX_PUBLIC_KEY_128_CHARS_LONG
