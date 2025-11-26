@@ -125,13 +125,15 @@ std::vector<std::string> getBinaries(cl_program &clProgram)
 
 unsigned int getUniqueDeviceIdentifier(const cl_device_id &deviceId)
 {
-#if defined(CL_DEVICE_TOPOLOGY_AMD)
-	auto topology = clGetWrapper<cl_device_topology_amd>(clGetDeviceInfo, deviceId, CL_DEVICE_TOPOLOGY_AMD);
-	if (topology.raw.type == CL_DEVICE_TOPOLOGY_TYPE_PCIE_AMD)
-	{
-		return (topology.pcie.bus << 16) + (topology.pcie.device << 8) + topology.pcie.function;
-	}
-#endif
+	// Disabling this as it causes conflit on machines with Nvidia + AMD GPU (like AMD Ryzen CPUs with integrated graphics)
+
+	// #if defined(CL_DEVICE_TOPOLOGY_AMD)
+	// 	auto topology = clGetWrapper<cl_device_topology_amd>(clGetDeviceInfo, deviceId, CL_DEVICE_TOPOLOGY_AMD);
+	// 	if (topology.raw.type == CL_DEVICE_TOPOLOGY_TYPE_PCIE_AMD) {
+	// 		return (topology.pcie.bus << 16) + (topology.pcie.device << 8) + topology.pcie.function;
+	// 	}
+	// #endif
+	
 	cl_int bus_id = clGetWrapper<cl_int>(clGetDeviceInfo, deviceId, CL_DEVICE_PCI_BUS_ID_NV);
 	cl_int slot_id = clGetWrapper<cl_int>(clGetDeviceInfo, deviceId, CL_DEVICE_PCI_SLOT_ID_NV);
 	return (bus_id << 16) + slot_id;
@@ -403,7 +405,7 @@ int main(int argc, char **argv)
 
 		// Build the program
 		std::cout << "  Building program..." << std::flush;
-		const std::string strBuildOptions = "-D PROFANITY_INVERSE_SIZE=" + toString(inverseSize) + " -D PROFANITY_MAX_SCORE=" + toString(PROFANITY_MAX_SCORE);
+		const std::string strBuildOptions = "-D PROFANITY_INVERSE_SIZE=" + toString(inverseSize) + " -D PROFANITY_MAX_SCORE=" + toString(PROFANITY_MAX_SCORE) + " -D PROFANITY_RESULT_AMOUNT=" + toString(PROFANITY_RESULT_AMOUNT);
 		if (printResult(clBuildProgram(clProgram, vDevices.size(), vDevices.data(), strBuildOptions.c_str(), NULL, NULL)))
 		{
 #ifdef PROFANITY_DEBUG

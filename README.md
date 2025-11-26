@@ -41,6 +41,24 @@ $ python3
 >>> hex((PRIVATE_KEY_A + PRIVATE_KEY_B) % 0xFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFEFFFFFC2F)
 ```
 
+# Prerequisites
+
+`build-essential ocl-icd ocl-icd-devel opencl-headers`
+
+
+## AMD GPUs
+
+AMD support have been disabled because it causes conflict on machines with nvidia GPUs and AMD Ryzen CPUs. If you don't have Nvidia GPU, uncomment the lines in `profanity.cpp`
+
+ ```cpp
+#if defined(CL_DEVICE_TOPOLOGY_AMD)
+  auto topology = clGetWrapper<cl_device_topology_amd>(clGetDeviceInfo, deviceId, CL_DEVICE_TOPOLOGY_AMD);
+  if (topology.raw.type == CL_DEVICE_TOPOLOGY_TYPE_PCIE_AMD) {
+    return (topology.pcie.bus << 16) + (topology.pcie.device << 8) + topology.pcie.function;
+  }
+#endif
+  ```
+  
 # Usage
 ```
 usage: ./profanity2 [OPTIONS]
