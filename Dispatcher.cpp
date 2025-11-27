@@ -73,8 +73,8 @@ static std::string toHex(const uint8_t * const s, const size_t len) {
 	return r;
 }
 
-static std::string getResultLine(cl_ulong4 seed, cl_ulong round, result r, cl_uchar score, const std::chrono::time_point<std::chrono::steady_clock> & timeStart, const Mode & mode)
-{
+static std::string getResultLine(cl_ulong4 seed, cl_ulong round, result r, cl_uchar score, const std::chrono::time_point<std::chrono::steady_clock> & timeStart, const Mode & mode) {
+	// Time delta
 	const auto seconds = std::chrono::duration_cast<std::chrono::seconds>(std::chrono::steady_clock::now() - timeStart).count();
 
 	// Format private key
@@ -97,10 +97,11 @@ static std::string getResultLine(cl_ulong4 seed, cl_ulong round, result r, cl_uc
 	const std::string strPublic = toHex(r.foundHash, 20);
 
 	// Print
-	allLineSS << "  Time: " << std::setw(5) << seconds << "s Score: " << std::setw(2) << (int) score << " Private: 0x" << strPrivate << ' ';
+	allLineSS << "  Time: " << std::setw(5) << seconds;
+	allLineSS << "s Score: " << std::setw(2) << (int) score;
+	allLineSS << " Private: 0x" << strPrivate << ' ';
 
-	allLineSS << mode.transformName();
-	allLineSS << ": 0x" << strPublic;
+	allLineSS << mode.transformName() << ": 0x" << strPublic;
 	
 	const std::string allLine = allLineSS.str();
 	return allLine;
@@ -145,7 +146,7 @@ cl_command_queue Dispatcher::Device::createQueue(cl_context & clContext, cl_devi
 #ifdef PROFANITY_DEBUG
 	cl_command_queue_properties p = CL_QUEUE_PROFILING_ENABLE;
 #else
-	cl_command_queue_properties p = (cl_bitfield) NULL;
+	cl_command_queue_properties p = 0;
 #endif
 
 #ifdef CL_VERSION_2_0
