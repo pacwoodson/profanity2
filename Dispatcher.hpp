@@ -21,7 +21,9 @@
 
 #define PROFANITY_SPEEDSAMPLES 20
 #define PROFANITY_MAX_SCORE 40
-#define PROFANITY_RESULT_AMOUNT 1000000
+// This is the maximum number of results the program will find, after which it will stop.
+// Performance starts degrading from this amount (500) because I guess it's copying memory for each kernel run. 
+#define PROFANITY_RESULT_AMOUNT 500
 
 class Dispatcher
 {
