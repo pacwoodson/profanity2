@@ -678,8 +678,10 @@ void profanity_result_update(const size_t id, __global const uchar *const hash,
                              __global uint *const pResultCounter) {
   if (score >= scoreMin) {
     uint index = atomic_inc(pResultCounter);
-    if (index > PROFANITY_RESULT_AMOUNT)
+    if (index > PROFANITY_RESULT_AMOUNT) {
+		printf("--- ATTENTION --- Reached maximum results amount!\n");
       return;
+	}
 
     pResult[index].foundId = id;
     pResult[index].score = score;
