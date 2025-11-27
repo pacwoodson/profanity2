@@ -203,7 +203,7 @@ Dispatcher::Device::Device(Dispatcher & parent, cl_context & clContext, cl_progr
 	m_memPrevLambda(clContext, m_clQueue, CL_MEM_READ_WRITE | CL_MEM_HOST_NO_ACCESS, size, true),
 	m_memResult(clContext, m_clQueue, CL_MEM_READ_WRITE | CL_MEM_HOST_READ_ONLY, PROFANITY_RESULT_AMOUNT + 1),
 	m_memResultCounter(clContext, m_clQueue, CL_MEM_READ_WRITE | CL_MEM_HOST_READ_ONLY, 1),
-	m_lastCounter(0),
+	m_prevResultCounter(0),
 	m_memData1(clContext, m_clQueue, CL_MEM_READ_ONLY | CL_MEM_HOST_WRITE_ONLY, 20),
 	m_memData2(clContext, m_clQueue, CL_MEM_READ_ONLY | CL_MEM_HOST_WRITE_ONLY, 20),
 	m_clSeed(createSeed()),
@@ -466,20 +466,26 @@ void Dispatcher::dispatch(Device & d) {
 }
 
 void Dispatcher::handleResult(Device & d) {
-	cl_uint numResults = d.m_memResultCounter[0];
+	cl_uint newResultCounter;
+	cl_uint prevResultCountCounter;
 
-	if (numResults >= PROFANITY_RESULT_AMOUNT)
-	{
-		printResult("--- ATTENTION --- Reached maximum results amount ! Exiting...", m_outputPath);
-		m_quit = true;
-		return;
-	}
-
-	if (numResults > d.m_lastCounter)
 	{
 		std::lock_guard<std::mutex> lock(m_mutex);
+		prevResultCountCounter = d.m_prevResultCounter;
+		newResultCounter = d.m_memResultCounter[0];
+		d.m_prevResultCounter = newResultCounter;
+	}
 
-		for (cl_uint i = d.m_lastCounter; i < numResults; ++i)
+	if (newResultCounter >= PROFANITY_RESULT_AMOUNT)
+	{
+		printResult("--- ATTENTION --- Reached maximum results amount ! Flushing and exiting...", m_outputPath);
+		newResultCounter = PROFANITY_RESULT_AMOUNT;
+		m_quit = true;
+	}
+
+	if (newResultCounter > prevResultCountCounter)
+	{
+		for (cl_uint i = prevResultCountCounter; i < newResultCounter; ++i)
 		{
 			result const &k_r = d.m_memResult[i];
 
@@ -491,7 +497,6 @@ void Dispatcher::handleResult(Device & d) {
 				m_quit = true;
 			}
 		}
-		d.m_lastCounter = numResults;
 	}
 }
 

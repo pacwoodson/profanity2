@@ -66,7 +66,7 @@ private:
 		CLMemory<result> m_memResult;
 		CLMemory<cl_uint> m_memResultCounter;
 
-		cl_uint m_lastCounter;
+		cl_uint m_prevResultCounter;
 
 		// Data parameters used in some modes
 		CLMemory<cl_uchar> m_memData1;
