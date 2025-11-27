@@ -249,6 +249,12 @@ void Dispatcher::run() {
 	m_eventFinished = clCreateUserEvent(m_clContext, NULL);
 	timeStart = std::chrono::steady_clock::now();
 
+	if (!m_outputPath.empty())
+	{
+		std::ofstream outputFile(m_outputPath, std::ios::app);
+		outputFile << "Started at " << timeStart.time_since_epoch().count() << std::endl;
+	}
+
 	init();
 
 	const auto timeInitialization = std::chrono::duration_cast<std::chrono::seconds>(std::chrono::steady_clock::now() - timeStart).count();
