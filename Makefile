@@ -13,10 +13,10 @@ ifeq ($(UNAME_S),Darwin)
 		ARCH_FLAGS = -mmmx
 	endif
 	LDFLAGS=-framework OpenCL
-	CFLAGS=-c -std=c++11 -Wall -O2
+	CFLAGS=-c -std=c++11 $(ARCH_FLAGS) -Wall -O2
 else
 	LDFLAGS=-s -lOpenCL -mcmodel=large
-	CFLAGS=-c -std=c++11 -Wall $ARCH_FLAGS -O2 -mcmodel=large 
+	CFLAGS=-c -std=c++11 -Wall -mmmx -O2 -mcmodel=large 
 endif
 
 all: $(SOURCES) $(EXECUTABLE)
