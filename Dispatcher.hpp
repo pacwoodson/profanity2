@@ -63,7 +63,7 @@ private:
 		CLMemory<mp_number> m_memPointsDeltaX;
 		CLMemory<mp_number> m_memInversedNegativeDoubleGy;
 		CLMemory<mp_number> m_memPrevLambda;
-		CLMemory<kernel_result> m_memResult;
+		CLMemory<result> m_memResult;
 		CLMemory<cl_uint> m_memResultCounter;
 
 		cl_uint m_lastCounter;

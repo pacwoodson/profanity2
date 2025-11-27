@@ -73,7 +73,7 @@ static std::string toHex(const uint8_t * const s, const size_t len) {
 	return r;
 }
 
-static std::string getResultLine(cl_ulong4 seed, cl_ulong round, kernel_result r, cl_uchar score, const std::chrono::time_point<std::chrono::steady_clock> & timeStart, const Mode & mode)
+static std::string getResultLine(cl_ulong4 seed, cl_ulong round, result r, cl_uchar score, const std::chrono::time_point<std::chrono::steady_clock> & timeStart, const Mode & mode)
 {const auto seconds = std::chrono::duration_cast<std::chrono::seconds>(std::chrono::steady_clock::now() - timeStart).count();
 
 	// Format private key
@@ -179,7 +179,7 @@ cl_command_queue Dispatcher::Device::createQueue(cl_context & clContext, cl_devi
 #ifdef PROFANITY_DEBUG
 	cl_command_queue_properties p = CL_QUEUE_PROFILING_ENABLE;
 #else
-	cl_command_queue_properties p = NULL;
+	cl_command_queue_properties p = (cl_bitfield) NULL;
 #endif
 
 #ifdef CL_VERSION_2_0
@@ -464,6 +464,7 @@ void Dispatcher::enqueueKernelDevice(Device & d, cl_kernel & clKernel, size_t wo
 void Dispatcher::dispatch(Device & d) {
 	cl_event event;
 	d.m_memResult.read(false, &event);
+	d.m_memResultCounter.read(false, &event);
 
 #ifdef PROFANITY_DEBUG
 	cl_event eventInverse;
@@ -496,7 +497,6 @@ void Dispatcher::dispatch(Device & d) {
 }
 
 void Dispatcher::handleResult(Device & d) {
-	d.m_memResultCounter.read(true);
 	cl_uint numResults = d.m_memResultCounter[0];
 
 	if (numResults >= PROFANITY_RESULT_AMOUNT)
@@ -507,25 +507,12 @@ void Dispatcher::handleResult(Device & d) {
 
 	if (numResults > d.m_lastCounter)
 	{
-		std::cout << "presultindex" << numResults <<std::endl;
-
-		d.m_memResult.read(true);
-		const auto seconds = std::chrono::duration_cast<std::chrono::seconds>(std::chrono::steady_clock::now() - timeStart).count();
+		std::lock_guard<std::mutex> lock(m_mutex);
 
 		for (cl_uint i = d.m_lastCounter; i < numResults; ++i)
 		{
-			kernel_result const &k_r = d.m_memResult[i];
+			result const &k_r = d.m_memResult[i];
 
-			// result r;
-			// r.seed = d.m_clSeed;
-			// r.round = d.m_round;
-			// r.foundId = k_r.foundId;
-			// r.score = k_r.score;
-			// r.seconds = seconds;
-			// std::memcpy(r.foundHash, k_r.foundHash, 20 * sizeof(cl_uchar));
-			// m_results.push_back(r);
-
-			// const std::string resultLine = getResultLine(r, m_mode);
 			const std::string resultLine = getResultLine(d.m_clSeed, d.m_round, k_r, k_r.score, timeStart, m_mode);
 			printResult(resultLine, m_outputPath);
 
@@ -574,12 +561,10 @@ void Dispatcher::printSpeed() {
 	if( m_countPrint > m_vDevices.size() ) {
 		std::string strGPUs;
 		double speedTotal = 0;
-		unsigned int i = 0;
 		for (auto & e : m_vDevices) {
 			const auto curSpeed = e->m_speed.getSpeed();
 			speedTotal += curSpeed;
 			strGPUs += " GPU" + toString(e->m_index) + ": " + formatSpeed(curSpeed);
-			++i;
 		}
 
 		const std::string strVT100ClearLine = "\33[2K\r";
