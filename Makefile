@@ -28,5 +28,5 @@ $(EXECUTABLE): $(OBJECTS)
 	$(CC) $(CFLAGS) $(CDEFINES) $< -o $@
 
 clean:
-	rm -rf *.o
+	rm -rf *.o profanity2.x64 cache-opencl.*
 
