@@ -74,7 +74,8 @@ static std::string toHex(const uint8_t * const s, const size_t len) {
 }
 
 static std::string getResultLine(cl_ulong4 seed, cl_ulong round, result r, cl_uchar score, const std::chrono::time_point<std::chrono::steady_clock> & timeStart, const Mode & mode)
-{const auto seconds = std::chrono::duration_cast<std::chrono::seconds>(std::chrono::steady_clock::now() - timeStart).count();
+{
+	const auto seconds = std::chrono::duration_cast<std::chrono::seconds>(std::chrono::steady_clock::now() - timeStart).count();
 
 	// Format private key
 	cl_ulong carry = 0;
@@ -104,41 +105,6 @@ static std::string getResultLine(cl_ulong4 seed, cl_ulong round, result r, cl_uc
 	const std::string allLine = allLineSS.str();
 	return allLine;
 }
-/*
-static std::string getResultLine(const result &r, const Mode &mode)
-{
-	// Format private key
-	cl_ulong carry = 0;
-	cl_ulong4 seedRes;
-
-	seedRes.s[0] = r.seed.s[0] + r.round;
-	carry = seedRes.s[0] < r.round;
-	seedRes.s[1] = r.seed.s[1] + carry;
-	carry = !seedRes.s[1];
-	seedRes.s[2] = r.seed.s[2] + carry;
-	carry = !seedRes.s[2];
-	seedRes.s[3] = r.seed.s[3] + carry + r.foundId;
-
-	std::ostringstream ss;
-	std::ostringstream allLineSS;
-
-	ss << std::hex << std::setfill('0');
-	ss << std::setw(16) << seedRes.s[3] << std::setw(16) << seedRes.s[2] << std::setw(16) << seedRes.s[1] << std::setw(16) << seedRes.s[0];
-	const std::string strPrivate = ss.str();
-
-	// Format public key
-	const std::string strPublic = toHex(r.foundHash, 20);
-
-	// Print
-	allLineSS << "  Time: " << std::setw(5) << r.seconds;
-	allLineSS << "s Score: " << std::setw(2) << static_cast<unsigned>(r.score);
-	allLineSS << " Private: 0x" << strPrivate << ' ';
-	allLineSS << mode.transformName() << ": 0x" << strPublic;
-
-	const std::string allLine = allLineSS.str();
-	return allLine;
-}
-*/
 
 static void printResult(const std::string &resultLine, const std::string &outputPath)
 {
