@@ -262,6 +262,8 @@ void Dispatcher::run() {
 	const auto timeInitialization = std::chrono::duration_cast<std::chrono::seconds>(std::chrono::steady_clock::now() - timeStart).count();
 	std::cout << "Initialization time: " << timeInitialization << " seconds" << std::endl;
 
+	timeStart = std::chrono::steady_clock::now();
+
 	m_quit = false;
 	m_countRunning = m_vDevices.size();
 
