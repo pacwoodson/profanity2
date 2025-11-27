@@ -478,6 +478,9 @@ void Dispatcher::handleResult(Device & d) {
 
 	if (newResultCounter >= PROFANITY_RESULT_AMOUNT)
 	{
+		// TODO in order to never stop:
+		// loop back to the begining of the buffer. 
+		// Need the increment + modulo(max_buffer_size) to be atomic in the kernel though
 		printResult("--- ATTENTION --- Reached maximum results amount ! Flushing and exiting...", m_outputPath);
 		newResultCounter = PROFANITY_RESULT_AMOUNT;
 		m_quit = true;

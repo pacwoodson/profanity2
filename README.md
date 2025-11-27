@@ -4,6 +4,22 @@ Profanity is a high performance (probably the fastest!) vanity address generator
 
 ![Screenshot](/img/screenshot.png?raw=true "Wow! That's a lot of zeros!")
 
+
+## Fork informations
+
+This is a fork from original 1inch project which changes a little bit the behaviour of the program.
+
+- Instead of finding only one result per score, this variant looks for every results from a score threshold. Original program would not find results lower than the highest score found in its run (example: the program find a result scored 14, then won't find results of score 12 afterwards). 
+The counterparty is that there is a hardcoded maximum amount of results [(500)](./Dispatcher.hpp#26) the program can find before it stops. Could be improved by looping back on the result buffer.
+
+`<program arguments...> -S 10` will find all results with a score >= 10
+
+- Added an option to store results in a text file when it finds it (in case the machine shutdown during the run and we lose the results)
+
+`<program arguments...> -o output_file.txt` will append results found in output_file.txt
+
+- [Disabled AMD GPU support](./profanity.cpp#128) because it was conflicting on a machine with Nvidia GPU + AMD CPU w/integrated graphics and I didn't need support. Can be re-enabled by uncommenting the code. 
+
 # Important to know
 
 A previous version of this project has a known critical issue due to a bad source of randomness. The issue enables attackers to recover private key from public key: https://blog.1inch.io/a-vulnerability-disclosed-in-profanity-an-ethereum-vanity-address-tool
