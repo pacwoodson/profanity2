@@ -675,9 +675,9 @@ __kernel void profanity_iterate(__global mp_number * const pDeltaX, __global mp_
 void profanity_result_update(const size_t id, __global const uchar *const hash,
                              __global result *const pResult, const uchar score,
                              const uchar scoreMin,
-                             __global uint *const pResultIndex) {
+                             __global uint *const pResultCounter) {
   if (score >= scoreMin) {
-    uint index = atomic_inc(pResultIndex);
+    uint index = atomic_inc(pResultCounter);
     if (index > PROFANITY_RESULT_AMOUNT)
       return;
 
@@ -717,15 +717,15 @@ __kernel void profanity_transform_contract(__global mp_number * const pInverse) 
 	pInverse[id].d[4] = h.d[7];
 }
 
-__kernel void profanity_score_benchmark(__global mp_number * const pInverse, __global result * const pResult, __constant const uchar * const data1, __constant const uchar * const data2, const uchar scoreMin, __global uint *const pResultIndex) {
+__kernel void profanity_score_benchmark(__global mp_number * const pInverse, __global result * const pResult, __constant const uchar * const data1, __constant const uchar * const data2, const uchar scoreMin, __global uint *const pResultCounter) {
 	const size_t id = get_global_id(0);
 	__global const uchar * const hash = pInverse[id].d;
 	uchar score = 0;
 
-	profanity_result_update(id, hash, pResult, score, scoreMin, pResultIndex);
+	profanity_result_update(id, hash, pResult, score, scoreMin, pResultCounter);
 }
 
-__kernel void profanity_score_matching(__global mp_number * const pInverse, __global result * const pResult, __constant const uchar * const data1, __constant const uchar * const data2, const uchar scoreMin, __global uint *const pResultIndex) {
+__kernel void profanity_score_matching(__global mp_number * const pInverse, __global result * const pResult, __constant const uchar * const data1, __constant const uchar * const data2, const uchar scoreMin, __global uint *const pResultCounter) {
 	const size_t id = get_global_id(0);
 	__global const uchar * const hash = pInverse[id].d;
 	uchar score = 0;
@@ -736,10 +736,10 @@ __kernel void profanity_score_matching(__global mp_number * const pInverse, __gl
 		}
 	}
 
-	profanity_result_update(id, hash, pResult, score, scoreMin, pResultIndex);
+	profanity_result_update(id, hash, pResult, score, scoreMin, pResultCounter);
 }
 
-__kernel void profanity_score_leading(__global mp_number * const pInverse, __global result * const pResult, __constant const uchar * const data1, __constant const uchar * const data2, const uchar scoreMin, __global uint *const pResultIndex) {
+__kernel void profanity_score_leading(__global mp_number * const pInverse, __global result * const pResult, __constant const uchar * const data1, __constant const uchar * const data2, const uchar scoreMin, __global uint *const pResultCounter) {
 	const size_t id = get_global_id(0);
 	__global const uchar * const hash = pInverse[id].d;
 	uchar score = 0;
@@ -760,10 +760,10 @@ __kernel void profanity_score_leading(__global mp_number * const pInverse, __glo
 		}
 	}
 
-	profanity_result_update(id, hash, pResult, score, scoreMin, pResultIndex);
+	profanity_result_update(id, hash, pResult, score, scoreMin, pResultCounter);
 }
 
-__kernel void profanity_score_range(__global mp_number * const pInverse, __global result * const pResult, __constant const uchar * const data1, __constant const uchar * const data2, const uchar scoreMin, __global uint *const pResultIndex) {
+__kernel void profanity_score_range(__global mp_number * const pInverse, __global result * const pResult, __constant const uchar * const data1, __constant const uchar * const data2, const uchar scoreMin, __global uint *const pResultCounter) {
 	const size_t id = get_global_id(0);
 	__global const uchar * const hash = pInverse[id].d;
 	uchar score = 0;
@@ -781,10 +781,10 @@ __kernel void profanity_score_range(__global mp_number * const pInverse, __globa
 		}
 	}
 
-	profanity_result_update(id, hash, pResult, score, scoreMin, pResultIndex);
+	profanity_result_update(id, hash, pResult, score, scoreMin, pResultCounter);
 }
 
-__kernel void profanity_score_zerobytes(__global mp_number * const pInverse, __global result * const pResult, __constant const uchar * const data1, __constant const uchar * const data2, const uchar scoreMin, __global uint *const pResultIndex) {
+__kernel void profanity_score_zerobytes(__global mp_number * const pInverse, __global result * const pResult, __constant const uchar * const data1, __constant const uchar * const data2, const uchar scoreMin, __global uint *const pResultCounter) {
 	const size_t id = get_global_id(0);
 	__global const uchar * const hash = pInverse[id].d;
 	uchar score = 0;
@@ -795,10 +795,10 @@ __kernel void profanity_score_zerobytes(__global mp_number * const pInverse, __g
 		}
 	}
 
-	profanity_result_update(id, hash, pResult, score, scoreMin, pResultIndex);
+	profanity_result_update(id, hash, pResult, score, scoreMin, pResultCounter);
 }
 
-__kernel void profanity_score_leadingrange(__global mp_number * const pInverse, __global result * const pResult, __constant const uchar * const data1, __constant const uchar * const data2, const uchar scoreMin, __global uint *const pResultIndex) {
+__kernel void profanity_score_leadingrange(__global mp_number * const pInverse, __global result * const pResult, __constant const uchar * const data1, __constant const uchar * const data2, const uchar scoreMin, __global uint *const pResultCounter) {
 	const size_t id = get_global_id(0);
 	__global const uchar * const hash = pInverse[id].d;
 	uchar score = 0;
@@ -822,10 +822,10 @@ __kernel void profanity_score_leadingrange(__global mp_number * const pInverse, 
 		}
 	}
 
-	profanity_result_update(id, hash, pResult, score, scoreMin, pResultIndex);
+	profanity_result_update(id, hash, pResult, score, scoreMin, pResultCounter);
 }
 
-__kernel void profanity_score_mirror(__global mp_number * const pInverse, __global result * const pResult, __constant const uchar * const data1, __constant const uchar * const data2, const uchar scoreMin, __global uint *const pResultIndex) {
+__kernel void profanity_score_mirror(__global mp_number * const pInverse, __global result * const pResult, __constant const uchar * const data1, __constant const uchar * const data2, const uchar scoreMin, __global uint *const pResultCounter) {
 	const size_t id = get_global_id(0);
 	__global const uchar * const hash = pInverse[id].d;
 	uchar score = 0;
@@ -850,10 +850,10 @@ __kernel void profanity_score_mirror(__global mp_number * const pInverse, __glob
 		++score;
 	}
 
-	profanity_result_update(id, hash, pResult, score, scoreMin, pResultIndex);
+	profanity_result_update(id, hash, pResult, score, scoreMin, pResultCounter);
 }
 
-__kernel void profanity_score_doubles(__global mp_number * const pInverse, __global result * const pResult, __constant const uchar * const data1, __constant const uchar * const data2, const uchar scoreMin, __global uint *const pResultIndex) {
+__kernel void profanity_score_doubles(__global mp_number * const pInverse, __global result * const pResult, __constant const uchar * const data1, __constant const uchar * const data2, const uchar scoreMin, __global uint *const pResultCounter) {
 	const size_t id = get_global_id(0);
 	__global const uchar * const hash = pInverse[id].d;
 	uchar score = 0;
@@ -867,5 +867,5 @@ __kernel void profanity_score_doubles(__global mp_number * const pInverse, __glo
 		}
 	}
 
-	profanity_result_update(id, hash, pResult, score, scoreMin, pResultIndex);
+	profanity_result_update(id, hash, pResult, score, scoreMin, pResultCounter);
 }
