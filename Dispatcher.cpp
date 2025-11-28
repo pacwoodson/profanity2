@@ -88,7 +88,7 @@ static std::string getResultLine(cl_ulong4 seed, cl_ulong round, result r, cl_uc
 
 	std::ostringstream ss;
 	std::ostringstream allLineSS;
-
+	
 	ss << std::hex << std::setfill('0');
 	ss << std::setw(16) << seedRes.s[3] << std::setw(16) << seedRes.s[2] << std::setw(16) << seedRes.s[1] << std::setw(16) << seedRes.s[0];
 	const std::string strPrivate = ss.str();
@@ -98,14 +98,14 @@ static std::string getResultLine(cl_ulong4 seed, cl_ulong round, result r, cl_uc
 
 	// Print
 	allLineSS << "  Time: " << std::setw(5) << seconds;
-	allLineSS << "s Score: " << std::setw(2) << (int)score;
+	allLineSS << "s Score: " << std::setw(2) << (int) score;
 	allLineSS << " Private: 0x" << strPrivate << ' ';
-	allLineSS << mode.transformName() << ": 0x" << strPublic;
 
+	allLineSS << mode.transformName() << ": 0x" << strPublic;
+	
 	const std::string allLine = allLineSS.str();
 	return allLine;
 }
-
 
 static void printResult(const std::string &resultLine, const std::string &outputPath)
 {
@@ -146,7 +146,7 @@ cl_command_queue Dispatcher::Device::createQueue(cl_context & clContext, cl_devi
 #ifdef PROFANITY_DEBUG
 	cl_command_queue_properties p = CL_QUEUE_PROFILING_ENABLE;
 #else
-	cl_command_queue_properties p = NULL;
+	cl_command_queue_properties p = 0;
 #endif
 
 #ifdef CL_VERSION_2_0
@@ -201,7 +201,9 @@ Dispatcher::Device::Device(Dispatcher & parent, cl_context & clContext, cl_progr
 	m_memPointsDeltaX(clContext, m_clQueue, CL_MEM_READ_WRITE | CL_MEM_HOST_NO_ACCESS, size, true),
 	m_memInversedNegativeDoubleGy(clContext, m_clQueue, CL_MEM_READ_WRITE | CL_MEM_HOST_NO_ACCESS, size, true),
 	m_memPrevLambda(clContext, m_clQueue, CL_MEM_READ_WRITE | CL_MEM_HOST_NO_ACCESS, size, true),
-	m_memResult(clContext, m_clQueue, CL_MEM_READ_WRITE | CL_MEM_HOST_READ_ONLY, PROFANITY_MAX_SCORE + 1),
+	m_memResult(clContext, m_clQueue, CL_MEM_READ_WRITE | CL_MEM_HOST_READ_ONLY, PROFANITY_RESULT_AMOUNT + 1),
+	m_memResultCounter(clContext, m_clQueue, CL_MEM_READ_WRITE | CL_MEM_HOST_READ_ONLY, 1),
+	m_prevResultCounter(0),
 	m_memData1(clContext, m_clQueue, CL_MEM_READ_ONLY | CL_MEM_HOST_WRITE_ONLY, 20),
 	m_memData2(clContext, m_clQueue, CL_MEM_READ_ONLY | CL_MEM_HOST_WRITE_ONLY, 20),
 	m_clSeed(createSeed()),
@@ -219,13 +221,14 @@ Dispatcher::Device::~Device() {
 
 }
 
-Dispatcher::Dispatcher(cl_context & clContext, cl_program & clProgram, const Mode mode, const size_t worksizeMax, const size_t inverseSize, const size_t inverseMultiple, const cl_uchar clScoreQuit, const std::string & seedPublicKey, const std::string &outputFile)
+Dispatcher::Dispatcher(cl_context & clContext, cl_program & clProgram, const Mode mode, const size_t worksizeMax, const size_t inverseSize, const size_t inverseMultiple, const cl_uchar clScoreQuit, const std::string & seedPublicKey, const std::string &outputFile, cl_uchar scoreMin)
 	: m_clContext(clContext)
 	, m_clProgram(clProgram)
 	, m_mode(mode)
 	, m_worksizeMax(worksizeMax)
 	, m_inverseSize(inverseSize)
 	, m_size(inverseSize*inverseMultiple)
+	, m_clScoreMin(scoreMin)
 	, m_clScoreMax(mode.score)
 	, m_clScoreQuit(clScoreQuit)
 	, m_eventFinished(NULL)
@@ -259,6 +262,8 @@ void Dispatcher::run() {
 
 	const auto timeInitialization = std::chrono::duration_cast<std::chrono::seconds>(std::chrono::steady_clock::now() - timeStart).count();
 	std::cout << "Initialization time: " << timeInitialization << " seconds" << std::endl;
+
+	timeStart = std::chrono::steady_clock::now();
 
 	m_quit = false;
 	m_countRunning = m_vDevices.size();
@@ -352,7 +357,8 @@ void Dispatcher::initBegin(Device & d) {
 	d.m_memData1.setKernelArg(d.m_kernelScore, 2);
 	d.m_memData2.setKernelArg(d.m_kernelScore, 3);
 
-	CLMemory<cl_uchar>::setKernelArg(d.m_kernelScore, 4, d.m_clScoreMax); // Updated in handleResult()
+	CLMemory<cl_uchar>::setKernelArg(d.m_kernelScore, 4, m_clScoreMin);
+	d.m_memResultCounter.setKernelArg(d.m_kernelScore, 5);
 
 	// Seed device
 	initContinue(d);
@@ -427,6 +433,7 @@ void Dispatcher::enqueueKernelDevice(Device & d, cl_kernel & clKernel, size_t wo
 void Dispatcher::dispatch(Device & d) {
 	cl_event event;
 	d.m_memResult.read(false, &event);
+	d.m_memResultCounter.read(false, &event);
 
 #ifdef PROFANITY_DEBUG
 	cl_event eventInverse;
@@ -459,26 +466,39 @@ void Dispatcher::dispatch(Device & d) {
 }
 
 void Dispatcher::handleResult(Device & d) {
-	for (auto i = PROFANITY_MAX_SCORE; i > m_clScoreMax; --i) {
-		result & r = d.m_memResult[i];
+	cl_uint newResultCounter;
+	cl_uint prevResultCountCounter;
 
-		if (r.found > 0 && i >= d.m_clScoreMax) {
-			d.m_clScoreMax = i;
-			CLMemory<cl_uchar>::setKernelArg(d.m_kernelScore, 4, d.m_clScoreMax);
+	{
+		std::lock_guard<std::mutex> lock(m_mutex);
+		prevResultCountCounter = d.m_prevResultCounter;
+		newResultCounter = d.m_memResultCounter[0];
+		d.m_prevResultCounter = newResultCounter;
+	}
 
-			std::lock_guard<std::mutex> lock(m_mutex);
-			if (i >= m_clScoreMax) {
-				m_clScoreMax = i;
+	if (newResultCounter >= PROFANITY_RESULT_AMOUNT)
+	{
+		// TODO in order to never stop:
+		// loop back to the begining of the buffer. 
+		// Need the increment + modulo(max_buffer_size) to be atomic in the kernel though
+		printResult("--- ATTENTION --- Reached maximum results amount ! Flushing and exiting...", m_outputPath);
+		newResultCounter = PROFANITY_RESULT_AMOUNT;
+		m_quit = true;
+	}
 
-				if (m_clScoreQuit && i >= m_clScoreQuit) {
-					m_quit = true;
-				}
+	if (newResultCounter > prevResultCountCounter)
+	{
+		for (cl_uint i = prevResultCountCounter; i < newResultCounter; ++i)
+		{
+			result const &k_r = d.m_memResult[i];
 
-				const std::string resultLine = getResultLine(d.m_clSeed, d.m_round, r, i, timeStart, m_mode);
-				printResult(resultLine, m_outputPath);
+			const std::string resultLine = getResultLine(d.m_clSeed, d.m_round, k_r, k_r.score, timeStart, m_mode);
+			printResult(resultLine, m_outputPath);
+
+			if (m_clScoreQuit && k_r.score >= m_clScoreQuit)
+			{
+				m_quit = true;
 			}
-
-			break;
 		}
 	}
 }
@@ -519,16 +539,16 @@ void Dispatcher::printSpeed() {
 	if( m_countPrint > m_vDevices.size() ) {
 		std::string strGPUs;
 		double speedTotal = 0;
-		unsigned int i = 0;
 		for (auto & e : m_vDevices) {
 			const auto curSpeed = e->m_speed.getSpeed();
 			speedTotal += curSpeed;
 			strGPUs += " GPU" + toString(e->m_index) + ": " + formatSpeed(curSpeed);
-			++i;
 		}
 
 		const std::string strVT100ClearLine = "\33[2K\r";
-		std::cerr << strVT100ClearLine << "Total: " << formatSpeed(speedTotal) << " -" << strGPUs << '\r' << std::flush;
+		const auto seconds = std::chrono::duration_cast<std::chrono::seconds>(std::chrono::steady_clock::now() - timeStart).count();
+
+		std::cerr << strVT100ClearLine << "Time running: " << seconds << "s Total speed: " << formatSpeed(speedTotal) << " -" << strGPUs << '\r' << std::flush;
 		m_countPrint = 0;
 	}
 }

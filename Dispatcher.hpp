@@ -21,6 +21,9 @@
 
 #define PROFANITY_SPEEDSAMPLES 20
 #define PROFANITY_MAX_SCORE 40
+// This is the maximum number of results the program will find, after which it will stop.
+// Performance starts degrading from this amount (500) because I guess it's copying memory for each kernel run. 
+#define PROFANITY_RESULT_AMOUNT 500
 
 class Dispatcher
 {
@@ -63,6 +66,9 @@ private:
 		CLMemory<mp_number> m_memInversedNegativeDoubleGy;
 		CLMemory<mp_number> m_memPrevLambda;
 		CLMemory<result> m_memResult;
+		CLMemory<cl_uint> m_memResultCounter;
+
+		cl_uint m_prevResultCounter;
 
 		// Data parameters used in some modes
 		CLMemory<cl_uchar> m_memData1;
@@ -83,7 +89,7 @@ private:
 	};
 
 public:
-	Dispatcher(cl_context &clContext, cl_program &clProgram, const Mode mode, const size_t worksizeMax, const size_t inverseSize, const size_t inverseMultiple, const cl_uchar clScoreQuit, const std::string &seedPublicKey, const std::string &outputFile);
+	Dispatcher(cl_context &clContext, cl_program &clProgram, const Mode mode, const size_t worksizeMax, const size_t inverseSize, const size_t inverseMultiple, const cl_uchar clScoreQuit, const std::string &seedPublicKey, const std::string &outputFile, cl_uchar scoreMin);
 	~Dispatcher();
 
 	void addDevice(cl_device_id clDeviceId, const size_t worksizeLocal, const size_t index);
@@ -117,6 +123,7 @@ private: /* Instance variables */
 	const size_t m_worksizeMax;
 	const size_t m_inverseSize;
 	const size_t m_size;
+	cl_uchar m_clScoreMin;
 	cl_uchar m_clScoreMax;
 	cl_uchar m_clScoreQuit;
 
@@ -136,6 +143,8 @@ private: /* Instance variables */
 	cl_ulong4 m_publicKeyY;
 
 	std::string m_outputPath;
+
+	std::vector<result> m_results;
 };
 
 #endif /* HPP_DISPATCHER */

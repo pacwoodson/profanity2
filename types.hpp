@@ -23,9 +23,10 @@ typedef struct {
     mp_number y;
 } point;
 
-typedef struct {
-	cl_uint found;
+typedef struct
+{
 	cl_uint foundId;
+	cl_uchar score;
 	cl_uchar foundHash[20];
 } result;
 

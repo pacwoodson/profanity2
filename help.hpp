@@ -18,6 +18,7 @@ usage: ./profanity2 [OPTIONS]
     --mirror                Score on mirroring from center.
     --leading-doubles       Score on hashes leading with hexadecimal pairs
     -b, --zero-bytes        Score on hashes containing the most zero bytes
+    -S, --score-min <size>  Minimum score to search (default 8)
 
   Modes with arguments:
     --leading <single hex>  Score on hashes leading with given hex character.
